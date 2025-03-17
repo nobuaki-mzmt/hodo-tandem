@@ -8,8 +8,8 @@ load("data_fmt/df_all_hs.rda")
 ### Storing into rda, downsampling, and set to mm
 {
   ### Upload data and define columns  
-  setwd("E:/Tandem_comparative/Hod_sjo/150dish")
-  dataset<- ("data_fmt/results_df.feather")
+  setwd("C:/Users/Mizumoto-lab/Desktop/hodo-tandem/analysis")
+  dataset<- ("data_fmt/data_fmt_df.feather")
   # load data
   df_all <- NULL
   df_body_all <- NULL
@@ -20,7 +20,8 @@ load("data_fmt/df_all_hs.rda")
   colnames(df)[1] <- "frame"
 
   ### Get bodysize data 
-  d_body <- fread("data_fmt/results_bodysize.csv")
+  d_body <- fread("data_fmt/data_fmt_bodysize.csv")
+  ## NEED TO DIFFEREINATE BETWEEN 90 and 150 for formatting
   d_body[,2:3] = d_body[,2:3] / 2000 * 150
   df_body_all = d_body
   
