@@ -4,4 +4,4 @@ Current step:
 Calculate how often each pair exhibits tandem running within the recorded period.
 
 Questions:
-Why is this definition of tandem correct, seems somewhat rough.
+Why is this definition of tandem correct, seems somewhat rough, I think it may be helpful later on if the definition was slightly different.
