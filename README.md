@@ -17,13 +17,20 @@ Tasks
 There are two major tasks. I will give examples to achieve these. You can follow these and/or do something else as long as tasks are achieved. Additional analyses are also welcome.
 
 1. Quantifying tandem running behavior
+
 Calculate how often each pair exhibits tandem running within the recorded period.
+
 Compare the duration of male-led vs. female-led tandem runs.
+
 Investigate how frequently pairs switch leading roles during tandem running.
+
 Visualize movement trajectories of pairs to illustrate coordination.
 
-2. Investigating the effect of dish size (90 or 140) on tandem running
+
+3. Investigating the effect of dish size (90 or 140) on tandem running
+
 Compare tandem run duration between different dish sizes.
+
 Compare tandem run speed between different dish sizes
 
 Output
