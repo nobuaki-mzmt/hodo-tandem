@@ -5,6 +5,9 @@
   library(data.table)
   library(arrow)
   library(dplyr)
+  
+  # parameters
+  tandemAngle = 60 * (pi / 180)
 } 
 
 ### Tandem Smoothing Function
@@ -29,7 +32,7 @@ tandem.smoothing <- function(vec, min.frame){
 {
   ### Upload data and define columns  
   setwd("C:/Users/Mizumoto-lab/Desktop/hodo-tandem/analysis")
-  dataset<- ("data_fmt/data_fmt_df.feather")
+  dataset<- ("data_fmt/data_raw_df.feather")
   
   # Initialize data frame and load data
   # df_all is the orgional data, while df is the origional data along with all calculation inferences from the data
@@ -41,8 +44,8 @@ tandem.smoothing <- function(vec, min.frame){
   colnames(df)[1] <- "frame"
 
   ### Get bodysize data 
-  df_body <- fread("data_fmt/data_fmt_bodysize.csv")
-  for (i in 2:nrow(df_body)) {  # Start from row 2 to skip the first row (it is the title)
+  df_body <- fread("data_fmt/data_raw_bodysize.csv")
+  for (i in 1:nrow(df_body)) {  # Start from row 2 to skip the first row (it is the title)
     if (grepl("150", df_body[i, 1])) {
       # If "150" is in the video name, scale by 150
       df_body[i, 2:3] <- df_body[i, 2:3] / 2000 * 150
@@ -52,25 +55,32 @@ tandem.smoothing <- function(vec, min.frame){
     }
   }
   df_body_scaled <- df_body
-  ###
-  
-  ##      WHY DONT WE SCALE ALL THE ROWS HERE???
-  
-  
+
   ####
   # 1. scale it into mm and second and downsample it in 5 FPS
   ## Conversion from pixels to mm##
-  scaling_factors <- ifelse(grepl("150", df[, 2]), 150, 90)
+  df$scaling_factor <- ifelse(grepl("150", df$video), 150, 90)
+  df$fx <- df$fx / 2000 * df$scaling_factor
+  df$fy <- df$fy / 2000 * df$scaling_factor
+  df$mx <- df$mx / 2000 * df$scaling_factor
+  df$my <- df$my / 2000 * df$scaling_factor
   
-  # Apply scaling to columns 3 to 6 based on the scaling factor
-  df[, 3:6] <- df[, 3:6] / 2000 * scaling_factors
+  ##Scaling body parts
+  df$fx_abdomen <- df$fx_abdomen / 2000 * df$scaling_factor
+  df$fy_abdomen <- df$fy_abdomen / 2000 * df$scaling_factor
+  df$mx_abdomen <- df$mx_abdomen / 2000 * df$scaling_factor
+  df$my_abdomen <- df$my_abdomen / 2000 * df$scaling_factor
+  
+  df$fx_headtip <- df$fx_headtip / 2000 * df$scaling_factor
+  df$fy_headtip <- df$fy_headtip / 2000 * df$scaling_factor
+  df$mx_headtip <- df$mx_headtip / 2000 * df$scaling_factor
+  df$my_headtip <- df$my_headtip / 2000 * df$scaling_factor
+  
   
   ## Down-sampling by specifying data at every 5 FPS##
   colnames(df)[1] <- 'time'
   df <- df[df$time %% 6 == 0, ]
   df$time <- df$time / 30
-  
-
     
     df_all <- rbind(df_all,data.frame(df))
 
@@ -87,31 +97,25 @@ tandem.smoothing <- function(vec, min.frame){
   load("data_fmt/df_all.rda")
   
   #### SPEED ####
-  df$f_spe <- c(0, sqrt( diff(df$fx)^2 + diff(df$fy)^2 ))
-  df$m_spe <- c(0, sqrt( diff(df$mx)^2 + diff(df$my)^2 ))
+  df$f_spe <- c(0, sqrt( diff(df$fx)^2 + diff(df$fy)^2 ))*5
+  df$m_spe <- c(0, sqrt( diff(df$mx)^2 + diff(df$my)^2 ))*5
   df$f_spe[df$time == 0] <- 0
   df$m_spe[df$time == 0] <- 0
   #### TANDEM ####
-  
-  ###     NEED MORE STRICT DEF FOR TANDEM AND MAYBE APPLY TANDEM SMOOTHING AT THE START FOR THE ENTIRE DATASET
-  
-  
   
   body_size_f <- mean(df_body_scaled$female)
   body_size_m <- mean(df_body_scaled$male)
   tandem_threshold = (body_size_f + body_size_m) * 0.6
   df$partner_dis = sqrt((df$fy - df$my)^2 + (df$fx - df$mx)^2)
   
-  ## POSSIBLE ADDITIONS TO DEFINITIONS OF TANDEM RUNNING              NOT WORKING RN
-  #tandemAngle = 10 * (pi / 180)
-  #df$heading_f <- atan2(df$fy - lag(df$fy), df$fx - lag(df$fx))
-  #df$heading_m <- atan2(df$my - lag(df$my), df$mx - lag(df$mx))
-  #heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2 * pi) - pi) &(heading_diff < tandemAngle)
+  df$heading_f <- atan2(df$fy_headtip - df$fy_abdomen, df$fx_headtip - df$fx_abdomen)
+  df$heading_m <- atan2(df$my_headtip - df$my_abdomen, df$mx_headtip - df$mx_abdomen)
+  heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2 * pi) - pi)
   
-  ## SPEED CONDITION
-  tandemSpeed = 0.3625
-  speed_diff <- abs(df$f_spe - df$m_spe)
-  df$tandem <- (speed_diff < tandemSpeed)&(df$partner_dis < tandem_threshold)
+  summary(df$f_spe)
+  
+  tandemSpeed = 1.213
+  df$tandem <- (df$f_spe > tandemSpeed)&(df$m_spe > tandemSpeed)&(df$partner_dis < tandem_threshold) &(heading_diff < tandemAngle)
   
   df$tandem[is.na(df$tandem)] <- FALSE
   
@@ -120,11 +124,11 @@ tandem.smoothing <- function(vec, min.frame){
   tandem = !tandem.smoothing(!tandem, 10)
   tandem <- tandem.smoothing(tandem, 10)
   df$tandem <- tandem
+  
+  
+  
   ###Compare the duration of male-led vs. female-led tandem runs
-  
-  ### I DONT THINK I ANSWERED THE CORRECT QUESTION
-  
-  
+  ### I DONT THINK I ANSWERED THE CORRECT QUESTION (what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs)
   df_lead <- data.frame(video = character(), m_lead = numeric(), f_lead = numeric())
   videos = unique(df$video)
   for(v in videos){
@@ -150,6 +154,9 @@ tandem.smoothing <- function(vec, min.frame){
     )
     df_lead <- rbind(df_lead, df_lead_temp)
   }
+  
+  
+  
   
   ### how many different times termites tandem run in each video
   df_list <- list()
@@ -188,9 +195,13 @@ tandem.smoothing <- function(vec, min.frame){
   
   df_final <- do.call(rbind, df_list)
   
+  
+  
+  
+  
+  
   ###how frequently pairs switch leading roles during tandem running.
   df_switches <- data.frame(video = character(0), switches = integer(0))
-  
   for(v in videos){
     video_rows <- which(df$video == v)
     m_lead = 0
@@ -212,23 +223,22 @@ tandem.smoothing <- function(vec, min.frame){
         previous_leader = current_leader
       }
     }
-    
-    # Create a temporary data frame for the current video
-    df_lead_temp <- data.frame(
+      df_lead_temp <- data.frame(
       video = v,
       switches = switches
     )
-    
-    # Append the temporary result to df_switches (use a list to collect data for efficiency)
     df_switches <- rbind(df_switches, df_lead_temp)
   }
+  
+  
+  
+  
   
   ## Compare tandem run duration between different dish sizes.
   df_filtered150 <- df_final[df_final$tandem == TRUE & grepl("150", df_final$video), ]
   df_filtered90 <- df_final[df_final$tandem == TRUE & grepl("90", df_final$video), ]
   average150RunDur <- sum(df_filtered150$duration) / nrow(df_filtered150)
   average90RunDur <- sum(df_filtered90$duration) / nrow(df_filtered90)
-  
   ## Compare tandem speed between different dish sizes.
   df_filteredspeed150 <- df[df$tandem == TRUE & grepl("150", df$video), ]
   df_filteredspeed90 <- df[df$tandem == TRUE & grepl("90", df$video), ]
