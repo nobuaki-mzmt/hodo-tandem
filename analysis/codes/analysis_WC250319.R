@@ -4,6 +4,7 @@
   library(stringr)
   library(data.table)
   library(arrow)
+  library(dplyr)
 } 
 
 ### Tandem Smoothing Function
@@ -67,8 +68,8 @@ tandem.smoothing <- function(vec, min.frame){
   ## Down-sampling by specifying data at every 5 FPS##
   colnames(df)[1] <- 'time'
   df <- df[df$time %% 6 == 0, ]
-  df[,1] = df[,1] / 30
-      
+  df$time <- df$time / 30
+  
 
     
     df_all <- rbind(df_all,data.frame(df))
@@ -84,10 +85,12 @@ tandem.smoothing <- function(vec, min.frame){
 ### Data Analysis
 {
   load("data_fmt/df_all.rda")
-  #### SPEED ####
-  df$f_spe <- c(NA, sqrt( diff(df$fx)^2 + diff(df$fy)^2 ))
-  df$m_spe <- c(NA, sqrt( diff(df$mx)^2 + diff(df$my)^2 ))
   
+  #### SPEED ####
+  df$f_spe <- c(0, sqrt( diff(df$fx)^2 + diff(df$fy)^2 ))
+  df$m_spe <- c(0, sqrt( diff(df$mx)^2 + diff(df$my)^2 ))
+  df$f_spe[df$time == 0] <- 0
+  df$m_spe[df$time == 0] <- 0
   #### TANDEM ####
   
   ###     NEED MORE STRICT DEF FOR TANDEM AND MAYBE APPLY TANDEM SMOOTHING AT THE START FOR THE ENTIRE DATASET
@@ -98,20 +101,19 @@ tandem.smoothing <- function(vec, min.frame){
   body_size_m <- mean(df_body_scaled$male)
   tandem_threshold = (body_size_f + body_size_m) * 0.6
   df$partner_dis = sqrt((df$fy - df$my)^2 + (df$fx - df$mx)^2)
-  df$tandem = df$partner_dis < tandem_threshold
   
   ## POSSIBLE ADDITIONS TO DEFINITIONS OF TANDEM RUNNING              NOT WORKING RN
-  tandemAngle=1* (pi/180)
-  df$heading_f <- atan2(df$fy - lag(df$fy), df$fx - lag(df$fx))
-  df$heading_m <- atan2(df$my - lag(df$my), df$mx - lag(df$mx))
-  heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2*pi) - pi)
-  df$tandem <- df$tandem & (heading_diff < tandemAngle)
+  #tandemAngle = 10 * (pi / 180)
+  #df$heading_f <- atan2(df$fy - lag(df$fy), df$fx - lag(df$fx))
+  #df$heading_m <- atan2(df$my - lag(df$my), df$mx - lag(df$mx))
+  #heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2 * pi) - pi) &(heading_diff < tandemAngle)
   
-  tandemSpeed=.4
-  df$speed_f <- sqrt((df$fy - lag(df$fy))^2 + (df$fx - lag(df$fx))^2)
-  df$speed_m <- sqrt((df$my - lag(df$my))^2 + (df$mx - lag(df$mx))^2)
-  speed_diff <- abs(df$speed_f - df$speed_m)
-  df$tandem <- df$tandem & (speed_diff < tandemSpeed)
+  ## SPEED CONDITION
+  tandemSpeed = 0.3625
+  speed_diff <- abs(df$f_spe - df$m_spe)
+  df$tandem <- (speed_diff < tandemSpeed)&(df$partner_dis < tandem_threshold)
+  
+  df$tandem[is.na(df$tandem)] <- FALSE
   
   ## Applying Tandem Smoothing to df
   tandem <- df$tandem
