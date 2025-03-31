@@ -12,22 +12,24 @@
 
 ### Tandem Smoothing Function
 {
-tandem.smoothing <- function(vec, min.frame){ 
-  if (length(vec) == 0) {
-    return(vec)
-  }
-  if(sum(vec)>0){
-    timing <- which(vec)[c(T, diff(which(vec))>1)]
-    end    <- which(vec)[c(diff(which(vec))>1,T)]
-    for(fi in 1:length(timing)){
-      if(length( vec[timing[fi]:end[fi]]) < min.frame ){
-        vec[timing[fi]:end[fi]] <- F
+  tandem.smoothing <- function(vec, threshold) {
+    # Get run-length encoding of the vector
+    r <- rle(vec)
+    # Precompute start and end indices for each run
+    cs <- cumsum(r$lengths)
+    starts <- c(1, head(cs, -1) + 1)
+    
+    # Loop over each run
+    for(i in seq_along(r$lengths)) {
+      if(r$lengths[i] < threshold) {
+        # For short runs, flip the value in that run.
+        vec[starts[i]:cs[i]] <- !r$values[i]
       }
     }
+    return(vec)
   }
-  return(vec)
 }
-}
+
 ### Data Formatting / Storing into rda, downsampling, and set to mm
 {
   ### Upload data and define columns  
@@ -116,54 +118,49 @@ tandem.smoothing <- function(vec, min.frame){
   
   tandemSpeed = 1.213
   df$tandem <- (df$f_spe > tandemSpeed)&(df$m_spe > tandemSpeed)&(df$partner_dis < tandem_threshold) &(heading_diff < tandemAngle)
-  
   df$tandem[is.na(df$tandem)] <- FALSE
   
-  ## Applying Tandem Smoothing to df
-  tandem <- df$tandem
-  tandem = !tandem.smoothing(!tandem, 10)
-  tandem <- tandem.smoothing(tandem, 10)
-  df$tandem <- tandem
+  
+
   
   
   
-  ###Compare the duration of male-led vs. female-led tandem runs
+  
+  
   ### I DONT THINK I ANSWERED THE CORRECT QUESTION (what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs)
-  df_lead <- data.frame(video = character(), m_lead = numeric(), f_lead = numeric())
-  videos = unique(df$video)
-  for(v in videos){
-    video_rows <- which(df$video == v)
-    m_lead = 0
-    f_lead = 0
-    
-    for(j in video_rows){
-      if(df$tandem[j] == TRUE){
-        mTof = sqrt((df$mx_headtip[j] - df$fx_abdomen[j])^2 + (df$my_headtip[j] - df$fy_abdomen[j])^2)
-        fTom = sqrt((df$fx_headtip[j] - df$mx_abdomen[j])^2 + (df$fy_headtip[j] - df$my_abdomen[j])^2)
-        if(mTof > fTom){
-          m_lead = m_lead + 1
-        } else {
-          f_lead = f_lead + 1
-        }
-      }
-    }
-    df_lead_temp <- data.frame(
-      video = v,
-      m_lead = m_lead / 5,  
-      f_lead = f_lead / 5   
-    )
-    df_lead <- rbind(df_lead, df_lead_temp)
-  }
-  
-  
-  
-  
-  ### how many different times termites tandem run in each video
   df_list <- list()
   for(i_v in 1:length(videos)){ 
     df_temp <- subset(df, video == videos[i_v])
+    ## Applying Tandem Smoothing to df
+    {
+      tandem <- df_temp$tandem
+      tandem = !tandem.smoothing(!tandem, 15)
+      tandem <- tandem.smoothing(tandem, 15)
+      df_temp$tandem <- tandem
+  }
+    ##Male and female lead for each frame
+    {
+    df_temp$m_lead <- FALSE
+    df_temp$f_lead <- FALSE
+      for (f in seq_len(nrow(df_temp))) {  
+      if (df_temp$tandem[f] == TRUE) {
+        mTof <- sqrt((df_temp$mx_headtip[f] - df_temp$fx_abdomen[f])^2 + (df_temp$my_headtip[f] - df_temp$fy_abdomen[f])^2)
+        fTom <- sqrt((df_temp$fx_headtip[f] - df_temp$mx_abdomen[f])^2 + (df_temp$fy_headtip[f] - df_temp$my_abdomen[f])^2)
+        
+        if (mTof > fTom) {
+          df_temp$m_lead[f] <- TRUE
+          df_temp$f_lead[f] <- FALSE
+        } else {
+          df_temp$f_lead[f] <- TRUE
+          df_temp$m_lead[f] <- FALSE
+        }
+      } else {
+        df_temp$m_lead[f] <- FALSE
+        df_temp$f_lead[f] <- FALSE
+      }
+    }
+    }
     tandem <- df_temp$tandem
-    
     # Tandem calculations
     tan.end <- which(tandem)[c(diff(which(tandem)) > 1, T)]
     tan.sta <- which(tandem)[c(T, diff(which(tandem)) > 1)]
@@ -175,22 +172,27 @@ tandem.smoothing <- function(vec, min.frame){
     sep.sta <- which(separation)[c(T, diff(which(separation)) > 1)]
     sep_duration <- (sep.end - sep.sta) / 5
     sep_cens <- sep.end != length(separation)
-    sep_duration[sep.sta == 1] <- NA
+    
+
     
     # Create data frames for tandem and separation
     df_tandem <- data.frame(
       video = videos[i_v],
       tandem = TRUE,
-      duration = tan_duration
+      duration = tan_duration,
+      m_lead = df_temp$m_lead[tan.sta],
+      f_lead = df_temp$f_lead[tan.sta]
     )
     
     df_separation <- data.frame(
       video = videos[i_v],
       tandem = FALSE,
-      duration = sep_duration
+      duration = sep_duration,
+      m_lead = NA,
+      f_lead = NA
     )
-    df_video <- rbind(df_tandem, df_separation)
-    df_list[[i_v]] <- df_video
+    
+    df_list[[i_v]] <- rbind(df_tandem, df_separation)
   }
   
   df_final <- do.call(rbind, df_list)
@@ -199,8 +201,8 @@ tandem.smoothing <- function(vec, min.frame){
   
   
   
-  
   ###how frequently pairs switch leading roles during tandem running.
+  
   df_switches <- data.frame(video = character(0), switches = integer(0))
   for(v in videos){
     video_rows <- which(df$video == v)
@@ -255,6 +257,8 @@ tandem.smoothing <- function(vec, min.frame){
   cat("\n")
   cat("90mm average tandem run Durration:", average90RunDur, "\n")
   cat("150mm average tandem run Durration:", average150RunDur, "\n")
+  #truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
+  
 }
 save(df_lead, file = "data_fmt/df_lead.rda")
 dim(df)
