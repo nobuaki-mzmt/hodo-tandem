@@ -5,9 +5,11 @@
   library(data.table)
   library(arrow)
   library(dplyr)
+  library(MASS)
   
   # parameters
   tandemAngle = 60 * (pi / 180)
+  tandemsmooth =15
 } 
 
 ### Tandem Smoothing Function
@@ -128,16 +130,38 @@
   
   
   ### I DONT THINK I ANSWERED THE CORRECT QUESTION (what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs)
+  tandem_df <- data.frame(tandem = logical(0))
   df_list <- list()
   for(i_v in 1:length(videos)){ 
     df_temp <- subset(df, video == videos[i_v])
     ## Applying Tandem Smoothing to df
     {
+      {
+        #OLD CODE
+      if (FALSE){
       tandem <- df_temp$tandem
-      tandem = !tandem.smoothing(!tandem, 15)
+      tandem = !tandem.smoothing(!tandem, 10)
       tandem <- tandem.smoothing(tandem, 15)
       df_temp$tandem <- tandem
-  }
+      df_temp$tandem <- tandem.smoothing(tandem.smoothing(df_temp$tandem, 15), 15)
+      exa <- rle(df_temp$tandem)
+      any(exa$lengths < 10)
+      which(exa$lengths < 10)
+      print(rle(df_temp$tandem))  # Check initial run-length encoding
+      df_temp$tandem <- tandem.smoothing(df_temp$tandem, 15)
+      print(rle(df_temp$tandem))  # Check if short runs were removed
+      df_temp$tandem <- tandem.smoothing(df_temp$tandem, 15)
+      print(rle(df_temp$tandem)) 
+      }
+      }
+      repeat {
+        old_rle <- rle(df_temp$tandem)  # Store previous RLE state
+        df_temp$tandem <- tandem.smoothing(df_temp$tandem, tandemsmooth)
+        new_rle <- rle(df_temp$tandem)  # Check new state
+        if (identical(old_rle$lengths, new_rle$lengths)) break  # Stop when no changes occur
+      }
+      tandem_df <- rbind(tandem_df, data.frame(tandem = df_temp$tandem))
+    }
     ##Male and female lead for each frame
     {
     df_temp$m_lead <- FALSE
@@ -196,6 +220,7 @@
   }
   
   df_final <- do.call(rbind, df_list)
+  df$tandem=tandem_df$tandem
   
   
   
@@ -257,7 +282,11 @@
   cat("\n")
   cat("90mm average tandem run Durration:", average90RunDur, "\n")
   cat("150mm average tandem run Durration:", average150RunDur, "\n")
-  #truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
+  
+  range(df_final[!df_final$tandem, ]$duration, na.rm = TRUE)
+  breaks_seq <- seq(1.0, 2000, by = 0.1)  # Cover entire range with small bin size
+  truehist(df_final[!df_final$tandem, ]$duration, breaks = breaks_seq, xlim = c(0, 30))
+  truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
   
 }
 save(df_lead, file = "data_fmt/df_lead.rda")
