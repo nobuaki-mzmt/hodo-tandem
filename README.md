@@ -38,5 +38,7 @@ Codes
 Visualized plots for each of the results are in PDF format
 Prepare a short document (1-2 paragraphs) summarizing the findings and methods
 
-Current step:
-Questions:
+What I am Doing:
+1. Quantifying tandem running behavior
+   a. Make a probability graph for durations of male led vs female led tandem runs (survivorship curve)
+   b. 
