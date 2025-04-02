@@ -6,10 +6,12 @@
   library(arrow)
   library(dplyr)
   library(MASS)
+  library(ggplot2)
   
   # parameters
   tandemAngle = 60 * (pi / 180)
-  tandemsmooth =15
+  tandemsmooth =20
+  leadsmooth=15
 } 
 
 ### Tandem Smoothing Function
@@ -125,12 +127,13 @@
   
 
   
-  
+ 
   
   
   
   ### I DONT THINK I ANSWERED THE CORRECT QUESTION (what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs)
   tandem_df <- data.frame(tandem = logical(0))
+  lead_df <- data.frame(m_lead = logical(0),f_lead = logical(0))
   df_list <- list()
   for(i_v in 1:length(videos)){ 
     df_temp <- subset(df, video == videos[i_v])
@@ -182,7 +185,21 @@
         df_temp$m_lead[f] <- FALSE
         df_temp$f_lead[f] <- FALSE
       }
+      }
+    repeat {
+      old_rle <- rle(df_temp$m_lead)  # Store previous RLE state
+      df_temp$m_lead <- tandem.smoothing(df_temp$m_lead, leadsmooth)
+      new_rle <- rle(df_temp$m_lead)  # Check new state
+      if (identical(old_rle$lengths, new_rle$lengths)) break  # Stop when no changes occur
     }
+    repeat {
+      old_rle <- rle(df_temp$f_lead)  # Store previous RLE state
+      df_temp$f_lead <- tandem.smoothing(df_temp$f_lead, leadsmooth)
+      new_rle <- rle(df_temp$f_lead)  # Check new state
+      if (identical(old_rle$lengths, new_rle$lengths)) break  # Stop when no changes occur
+    }
+    
+    lead_df <- rbind(lead_df, data.frame(m_lead = df_temp$m_lead,f_lead = df_temp$f_lead))
     }
     tandem <- df_temp$tandem
     # Tandem calculations
@@ -221,30 +238,32 @@
   
   df_final <- do.call(rbind, df_list)
   df$tandem=tandem_df$tandem
+  df$m_lead=lead_df$m_lead
+  df$f_lead=lead_df$f_lead
   
   
   
-  
+  df$lead <- ifelse(df$m_lead, "male",
+                    ifelse(df$f_lead, "female", NA))
   
   ###how frequently pairs switch leading roles during tandem running.
-  
+  df$switch=FALSE
   df_switches <- data.frame(video = character(0), switches = integer(0))
+  frame=0
   for(v in videos){
     video_rows <- which(df$video == v)
     m_lead = 0
     f_lead = 0
     switches = 0
     previous_leader = ""
-    
     for(j in video_rows){
+      frame=frame+1
       if(df$tandem[j] == TRUE){
-        male_distance = sqrt((df$mx_headtip[j] - df$fx_abdomen[j])^2 + (df$my_headtip[j] - df$fy_abdomen[j])^2)
-        female_distance = sqrt((df$fx_headtip[j] - df$mx_abdomen[j])^2 + (df$fy_headtip[j] - df$my_abdomen[j])^2)
-        current_leader = ifelse(male_distance > female_distance, "male", "female")
-        
+        current_leader = df$lead[j]
         # Increment switch count if the leader changes
         if (previous_leader != "" && current_leader != previous_leader) {
           switches = switches + 1
+          df$switch[frame]=TRUE
         }
         
         previous_leader = current_leader
@@ -260,7 +279,9 @@
   
   
   
-  
+}
+#### Data Visualization
+{
   ## Compare tandem run duration between different dish sizes.
   df_filtered150 <- df_final[df_final$tandem == TRUE & grepl("150", df_final$video), ]
   df_filtered90 <- df_final[df_final$tandem == TRUE & grepl("90", df_final$video), ]
@@ -287,6 +308,54 @@
   breaks_seq <- seq(1.0, 2000, by = 0.1)  # Cover entire range with small bin size
   truehist(df_final[!df_final$tandem, ]$duration, breaks = breaks_seq, xlim = c(0, 30))
   truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
+  
+  tandem_runs <- subset(df_final, tandem == TRUE)
+  tandem_runs$event <- 1
+  tandem_runs$lead <- ifelse(tandem_runs$m_lead, "male",
+                             ifelse(tandem_runs$f_lead, "female", NA))
+  tandem_runs$size <- ifelse(grepl("150", tandem_runs$video), "150", 
+                             ifelse(grepl("90", tandem_runs$video), "90", NA))
+  male_led <- subset(tandem_runs, m_lead == TRUE)
+  female_led <- subset(tandem_runs, f_lead == TRUE)
+  sep_runs <- subset(df_final, tandem == FALSE)
+  sep_runs$event <- 1
+  
+ ggplot(tandem_runs, aes(x = duration, fill = lead)) +
+    geom_density(alpha = 0.5) +
+    labs(title = "Probability Density of Tandem Run Durations",
+         x = "Duration (seconds)", y = "Density",
+         fill = "Leading Sex") +
+    theme_minimal()
+  #ggsave("density_function_tandem.png", plot = TanProbDens, width = 4, height = 5)
+  
+  
+  library(survival)
+  tandem_runs$lead <- factor(tandem_runs$lead, levels = c("male", "female"))
+  fit_by_lead <- survfit(Surv(duration, event) ~ lead, data = tandem_runs)
+  plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
+       xlab = "Tandem Run Duration (seconds)", 
+       ylab = "Survival Probability",
+       main = "Survivorship Curve by Leading Sex")
+  legend("topright", legend = c("Male-led", "Female-led"), col = c("blue", "red"), lwd = 2)
+  
+  library(survival)
+  surv_obj <- Surv(time = sep_runs$duration, event = sep_runs$event)
+  fit <- survfit(surv_obj ~ 1, data = sep_runs)
+  plot(fit,
+       xlab = "Seperation Duration",
+       ylab = "Probability of Continuation",
+       main = "Survivorship Curve of Seperation Duration",
+       col = "blue",
+       lwd = 2)
+  
+  library(survival)
+  tandem_runs$lead <- factor(tandem_runs$size, levels = c("150", "90"))
+  fit_by_lead <- survfit(Surv(duration, event) ~ lead, data = tandem_runs)
+  plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
+       xlab = "Tandem Run Duration (seconds)", 
+       ylab = "Survival Probability",
+       main = "Survivorship Curve by Dish Size")
+  legend("topright", legend = c("150mm", "90mm"), col = c("blue", "red"), lwd = 2)
   
 }
 save(df_lead, file = "data_fmt/df_lead.rda")
