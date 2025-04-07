@@ -42,11 +42,9 @@ What I am Doing:
 1. Quantifying tandem running behavior
    a. Make a probability graph for durations of male led vs female led tandem runs (survivorship curve, make it by size and sex) (survcurv for sep by prev leader and sizes)
    b. Investigate how frequently pairs switch leading roles during tandem running. (compared based on Sex of the initial leader + Average speed + A time series plot showing when switches happen (frames vs switch events) or just like a chart with average switches)
-   c. Visualize movement trajectories of pairs to illustrate coordination.
 2. Investigating the effect of dish size (90 or 140) on tandem running
    a. Compare tandem run duration between different dish sizes. (Surviviorship curve)
    b. Compare tandem run speed between different dish sizes
-
 
 )
 
