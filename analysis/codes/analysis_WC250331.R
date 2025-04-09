@@ -15,7 +15,7 @@
   library(cowplot)
   library(coxme)
   library(tidyr)
-  
+
   # parameters
   tandemAngle = 60 * (pi / 180)
   tandemsmooth =20
@@ -107,7 +107,7 @@
   df$f_spe[df$time == 0] <- 0
   df$m_spe[df$time == 0] <- 0
   
-  #### TANDEM ####
+  #### TANDEM + CLOSE####
   body_size_f <- mean(df_body_scaled$female)
   body_size_m <- mean(df_body_scaled$male)
   tandem_threshold = (body_size_f + body_size_m) * 0.6
@@ -117,11 +117,13 @@
   df$heading_m <- atan2(df$my_headtip - df$my_abdomen, df$mx_headtip - df$mx_abdomen)
   heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2 * pi) - pi)
   
+  df$close <- (df$partner_dis < tandem_threshold)
   df$tandem <- (df$f_spe > tandemSpeed)&(df$m_spe > tandemSpeed)&(df$partner_dis < tandem_threshold) &(heading_diff < tandemAngle)
   df$tandem[is.na(df$tandem)] <- FALSE
   
   ### what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs
   tandem_df <- data.frame(tandem = logical(0))
+  close_df <- data.frame(close = logical(0))
   lead_df <- data.frame(m_lead = logical(0),f_lead = logical(0))
   df_list <- list()
   for(i_v in 1:length(videos)){ 
@@ -134,6 +136,14 @@
         if (identical(old_rle$lengths, new_rle$lengths)) break
       }
       tandem_df <- rbind(tandem_df, data.frame(tandem = df_temp$tandem))
+      
+      repeat {
+        old_rle <- rle(df_temp$close)
+        df_temp$close <- tandem.smoothing(df_temp$close, tandemsmooth)
+        new_rle <- rle(df_temp$close) 
+        if (identical(old_rle$lengths, new_rle$lengths)) break
+      }
+      close_df <- rbind(close_df, data.frame(close = df_temp$close))
       
     ##Male and female lead for each frame/smoothing leaders
     {
@@ -211,6 +221,8 @@
   
   df_final <- do.call(rbind, df_list)
   df$tandem=tandem_df$tandem
+  df$close=close_df$close
+  df$close <- ifelse(df$tandem, FALSE, df$close)
   df$m_lead=lead_df$m_lead
   df$f_lead=lead_df$f_lead
   df$lead <- ifelse(df$m_lead, "male",
@@ -323,51 +335,69 @@
   df_malesep$leader="Male"
   df_sepfin <- rbind(df_malesep, df_fmalesep)
   df_sepfin$event=1
+  
+  rle_m <- rle(sep_runs$malelast)
+  starts_m <- cumsum(c(1, head(rle_m$lengths, -1)))
+  df_malesep$video <- df$video[starts_m[rle_m$values]]
+  
+  # For Female-led separations
+  rle_f <- rle(sep_runs$femalelast)
+  starts_f <- cumsum(c(1, head(rle_f$lengths, -1)))
+  df_fmalesep$video <- df$video[starts_f[rle_f$values]]
+  df_malesep$size <- ifelse(grepl("150", df_malesep$video), "150mm", "90mm")
+  df_fmalesep$size <- ifelse(grepl("150", df_fmalesep$video), "150mm", "90mm")
+  df_sepvid <- rbind(df_malesep, df_fmalesep)
+  df_sepvid$event=1
+  
+  #Makes sure that the indexing is correct
+  cat("Check counts:\n")
+  cat("Number of male-led runs:", nrow(df_malesep), "\n")
+  cat("Number of starts for male-led runs:", length(starts_m[rle_m$values]), "\n")
+  
+  #Box plot of speed in tandem based on dish size Set Up
+  df_tan <- df %>%
+    filter(tandem == TRUE) %>%
+    mutate(size = ifelse(grepl("150", video), "150 mm", "90 mm"))
+  
+  df_sum <- data.frame()
+  for(i_v in seq_along(videos)){
+    v <- videos[i_v]
+    df_tem <- subset(df_tan, video == v)
+    tandem_index <- df_tem$tandem
+    df_sum_temp <- data.frame(
+      video            = df_tem$video[i_v],
+      size            = df_tem$size[i_v],
+      f_speed         = mean(df_tem$f_spe, na.rm = TRUE),
+      m_speed         = mean(df_tem$m_spe, na.rm = TRUE)
+    )
+    df_sum <- rbind(df_sum, df_sum_temp)
+  }
+  
+  #Box plot of switches based on dish size Set Up
+  df_switches2 <- df_switches %>%
+    mutate(
+      dish_size = ifelse(grepl("150", video), "150 mm", "90 mm")
+    )
+  
 }
 #### Data Visualization
 {
-  #Average Speeds and durations
-  {
-  cat("90mm male average speed:", mavg_speed90, "\n")
-  cat("150mm male average speed:", mavg_speed150, "\n")
-  cat("\n")
-  cat("90mm female average speed:", favg_speed90, "\n")
-  cat("150mm female average speed:", favg_speed150, "\n")
-  cat("\n")
-  cat("90mm average tandem run Durration:", average90RunDur, "\n")
-  cat("150mm average tandem run Durration:", average150RunDur, "\n")
-  }
-  #Tandem Runs and seperation Runs Duration Graph
-  {
-  breaks_seq <- seq(1.0, 2000, by = 0.1)
-  truehist(df_final[!df_final$tandem, ]$duration, breaks = breaks_seq, xlim = c(0, 30))
-  truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
-  }
-  
-  #Separation Runs by sex Duration Graph
+  #Separation Events Duration by sex Graph
   {
   surv_obj <- Surv(time = df_sepfin$lengths, event = df_sepfin$event)
   fit <- survfit(surv_obj ~ leader, data = df_sepfin)
   fit_by_lead <- survfit(Surv(lengths, event) ~ leader, data = df_sepfin)
-  plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
-       xlab = "Tandem Run Duration (seconds)", 
+  sep_plot=plot(fit_by_lead, col = c("Red", "Blue"), lwd = 2, 
+       xlab = "Separation Event Duration (seconds)", 
        ylab = "Survival Probability",
-       main = "Survivorship Curve by Dish Size")
-  legend("topright", legend = c("female", "male"), col = c("blue", "red"), lwd = 2)
-  }
-  
-  #Probability Density of Tandem Run Durations
-  {
- ggplot(tandem_runs, aes(x = duration, fill = lead)) +
-    geom_density(alpha = 0.5) +
-    labs(title = "Probability Density of Tandem Run Durations",
-         x = "Duration (seconds)", y = "Density",
-         fill = "Leading Sex") +
-    theme_minimal()
+       main = "Survivorship Curve by Sex")
+  legend("topright", legend = c("female last led", "male last led"), col = c("Red", "Blue"), lwd = 2)
   }
   
   #Tandem Run Duration  by Sex
   {
+  tandem_runs$lead <- ifelse(tandem_runs$m_lead, "male",
+                               ifelse(tandem_runs$f_lead, "female", NA))
   tandem_runs$lead <- factor(tandem_runs$lead, levels = c("male", "female"))
   fit_by_lead <- survfit(Surv(duration, event) ~ lead, data = tandem_runs)
   plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
@@ -377,35 +407,98 @@
   legend("topright", legend = c("Male-led", "Female-led"), col = c("blue", "red"), lwd = 2)
   }
   
+  #Separation Run Duration by size of dish
+  {
+    fit_size <- survfit(Surv(lengths, event) ~ size, data = df_sepvid)
+    
+    plot(fit_size, col = c("darkgreen", "orange"), lwd = 2,
+         xlab = "Separation Event Duration (seconds)",
+         ylab = "Survival Probability",
+         main = "Separation Duration by Dish Size")
+    
+    legend("topright", legend = levels(factor(df_sepvid$size)), 
+           col = c("darkgreen", "orange"), lwd = 2)
+  }
+  
   #Tandem Run Duration by size of dish
   {
-  tandem_runs$lead <- factor(tandem_runs$size, levels = c("150", "90"))
-  fit_by_lead <- survfit(Surv(duration, event) ~ lead, data = tandem_runs)
-  plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
-       xlab = "Tandem Run Duration (seconds)", 
-       ylab = "Survival Probability",
-       main = "Survivorship Curve by Dish Size")
-  legend("topright", legend = c("150mm", "90mm"), col = c("blue", "red"), lwd = 2)
+    tandem_runs$lead <- factor(tandem_runs$size, levels = c("150", "90"))
+    fit_by_lead <- survfit(Surv(duration, event) ~ lead, data = tandem_runs)
+    plot(fit_by_lead, col = c("blue", "red"), lwd = 2, 
+         xlab = "Tandem Run Duration (seconds)", 
+         ylab = "Survival Probability",
+         main = "Survivorship Curve by Dish Size")
+    legend("topright", legend = c("150mm", "90mm"), col = c("blue", "red"), lwd = 2)
   }
+  
+  #Box plot of switches based on dish size
+  {
+    ggplot(df_switches2, aes(x = dish_size, y = switches)) +
+      geom_boxplot() +
+      labs(
+        x = "Dish Size",
+        y = "Number of Switches",
+        title = "Number of Leading-Role Switches by Dish Size"
+      ) +
+      theme_minimal()
+  }
+  
+  #Box plot of speed in tandem based on dish size and Sex
+  {
+    
+    # 1. Pivot from wide to long: gather female and male speed into one 'speed' column
+    df_tandem_long <- df_sum %>%
+      dplyr:: select(video, size, f_speed, m_speed) %>%
+      pivot_longer(
+        cols = c("f_speed", "m_speed"),
+        names_to = "sex",
+        values_to = "speed"
+      ) %>%
+      mutate(
+        sex = ifelse(sex == "f_speed", "Female", "Male"),
+        group = paste(size, sex)
+      )
+    # 2. Plot with group on x-axis and speed on y-axis
+    ggplot(df_tandem_long, aes(x = group, y = speed)) +
+      geom_boxplot() +
+      labs(
+        x = "Dish Size and Sex",
+        y = "Speed (mm/s)",
+        title = "Tandem Speeds: 90 Female, 90 Male, 150 Female, 150 Male"
+      ) +
+      theme_minimal()
+  }
+
 } 
-#Check for interactions
+#Check for interactions/ Other Plots
 {
+  #states
+  {
+    df$state <- ifelse(df$m_lead, 
+                       "male led tandem",
+                       ifelse(df$f_lead, 
+                              "female led tandem",
+                              ifelse(df$close, 
+                                     "close", 
+                                     "separated")))
+    freqs <- table(df$state)
+    percent <- prop.table(freqs) * 100
+    cbind(Frames = freqs, Percent = round(percent, 2))
+    
+  }
+  #P value
+  {
 cox_model <- coxme(Surv(duration, event) ~ lead + (1 | video), data = tandem_runs)
 summary(cox_model)
-
-tandem_runs$lead <- ifelse(tandem_runs$m_lead, "male",
-                           ifelse(tandem_runs$f_lead, "female", NA))
-tandem_runs$lead <- factor(tandem_runs$lead, levels = c("male", "female"))
-
-
-# Mixed effects Cox model: survival ~ lead (i.e., sex) + random intercept for video
+  }
+  # Mixed effects Cox model: survival ~ lead (i.e., sex) + random intercept for video
+  {
 fit_sex <- coxme(Surv(duration, event) ~ lead + (1 | video), data = tandem_runs)
 summary(fit_sex)
 anova(fit_sex)
-
-### Plot tandem and separation durations
+  }
+  # Plot tandem and separation durations
   {
-  
   # Define lead type based on logical conditions
   tandem_runs$lead <- factor(ifelse(tandem_runs$m_lead, "Male-led", "Female-led"), 
                              levels = c("Male-led", "Female-led"))
@@ -426,22 +519,9 @@ anova(fit_sex)
                          legend.labs = c("Male", "Female"),  # Legend labels
                          ggtheme = theme_classic())$plot +
     theme(plot.title = element_text(hjust = -0.1, size = 16, face = "bold"))
-  
-  # Fit survival model for separation duration
-  surv_obj <- Surv(time = sep_runs$duration, event = sep_runs$event)
-  fit_by_sep <- survfit(surv_obj ~ 1, data = sep_runs)
-  
-  #Combine both plots into a panel
-  stability_panel <- plot_grid(tan_plot, sep_plot, labels = c("A", "B"))
-  
-   #Display the panel
-  print(stability_panel)
-  
-  ggsave("output/stability_panel.png", stability_panel, width = 6, height = 4)
-  
-  }
-#Check for interactions
-{
+}
+  #Checking between 'size' and 'lead'
+  {
   #Checking between 'size' and 'lead'
   tandem_runs$lead_size <- factor(interaction(tandem_runs$lead, tandem_runs$size), 
                                   levels = c("Male-led.90", "Male-led.150", "Female-led.90", "Female-led.150"),
@@ -464,8 +544,38 @@ anova(fit_sex)
   
   # Print the plot
   print(tan_plot)
-  
 }
+  #Probability Density of Tandem Run Durations
+  {
+    ggplot(tandem_runs, aes(x = duration, fill = lead)) +
+      geom_density(alpha = 0.5) +
+      labs(title = "Probability Density of Tandem Run Durations",
+           x = "Duration (seconds)", y = "Density",
+           fill = "Leading Sex") +
+      theme_minimal()
+  }
+  #Tandem Runs and seperation Runs Duration Graph
+  {
+    breaks_seq <- seq(1.0, 2000, by = 0.1)
+    truehist(df_final[!df_final$tandem, ]$duration, breaks = breaks_seq, xlim = c(0, 30))
+    truehist(df_final[df_final$tandem,]$duration, breaks = seq(0,1000,0.1), xlim=c(0,30))
+  }
+  #Average Speeds and durations
+  {
+    cat("90mm male average speed:", mavg_speed90, "\n")
+    cat("150mm male average speed:", mavg_speed150, "\n")
+    cat("\n")
+    cat("90mm female average speed:", favg_speed90, "\n")
+    cat("150mm female average speed:", favg_speed150, "\n")
+    cat("\n")
+    cat("90mm average tandem run Durration:", average90RunDur, "\n")
+    cat("150mm average tandem run Durration:", average150RunDur, "\n")
+  }
+
+}
+#Extra Fun Stuff
+{
+  
 }
 #Etc
 {
