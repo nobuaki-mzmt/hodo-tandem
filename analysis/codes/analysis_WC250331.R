@@ -1,6 +1,6 @@
 #### PACKAGES + PARAMETERS ########
 {
-  update.packages(ask = FALSE, checkBuilt = TRUE)
+  #update.packages(ask = FALSE, checkBuilt = TRUE)
   library(stringr)
   library(data.table)
   library(arrow)
