@@ -3,21 +3,6 @@
 
 This project investigates **tandem running behavior in termites**, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leadership (male or female), and analyzing how behaviors vary by arena size.
 
-## 📁 Project Structure
-
-```
-project_root/
-│
-├── analysis_WC250331.R       # Main analysis pipeline
-├── data_fmt/
-│   ├── df_all.rda            # Full behavior-enriched dataset
-│   ├── df_body_scaled.rda    # Scaled body size data (mm)
-│   ├── df_lead.rda           # Processed leadership behavior
-│   └── data_raw_df.feather   # Raw tracking data (from SLEAP)
-├── data_raw_bodysize.csv     # Raw body measurements
-└── README.md                 # This file
-```
-
 ## 🔧 Setup & Dependencies
 
 This project is written in R. You’ll need the following packages:
