@@ -1,5 +1,11 @@
-#### PACKAGES + PARAMETERS ########
+# data formatting and analysis on Hodotermopsis tandem project
+
+# --------------------------------------------------------------- #
+# PACKAGES + PARAMETERS
+# --------------------------------------------------------------- #
 {
+  rm(list = ls()) # NM: use this to remove everything at the begining for house keeping. This is useful to see if your codes work.
+  
   #update.packages(ask = FALSE, checkBuilt = TRUE)
   library(stringr)
   library(data.table)
@@ -18,11 +24,17 @@
 
   # parameters
   tandemAngle = 60 * (pi / 180)
-  tandemsmooth =20
-  leadsmooth=15
-  tandemSpeed = 1.213
+  tandemsmooth = 20 # NM: explain this parameter
+  leadsmooth = 15 
+  tandemSpeed = 1.213 # NM: where this value comes from? This means both females and males need to be moving for tandem run?
+  tandem_threshold_dis = .6 # female and male are regarded as being interaction when the body center distance is less than the sum of body lengths x 0.6
+  # NM: write down the definition of tandem running somewhere 
 } 
-### Tandem Smoothing Function
+# --------------------------------------------------------------- #
+
+# --------------------------------------------------------------- #
+# Tandem Smoothing Function
+# --------------------------------------------------------------- #
 {
   tandem.smoothing <- function(vec, threshold) {
     r <- rle(vec)
@@ -36,14 +48,19 @@
     return(vec)
   }
 }
-### Data Formatting / Storing into rda, downsampling, and set to mm
+# --------------------------------------------------------------- #
+
+# --------------------------------------------------------------- #
+# Data Formatting / Storing into rda, downsampling, and set to mm
+# --------------------------------------------------------------- #
 {
   ### Upload data and define columns  
-  setwd("C:/Users/Mizumoto-lab/Desktop/hodo-tandem/analysis")
-  dataset<- ("data_fmt/data_raw_df.feather")
+  #setwd("C:/Users/Mizumoto-lab/Desktop/hodo-tandem/analysis") 
+  # NM comments: you do not need this as we can use relative path in Rstudio project
+  dataset <- ("data_fmt/data_raw_df.feather")
   
   # Initialize data frame and load data
-  # df_all is the orgional data, while df is the origional data along with all calculation inferences from the data
+  # df_all is the original data, while df is the original data along with all calculation inferences from the data
   df_all <- data.frame()
   
   print(paste("working on", dataset))
@@ -71,7 +88,7 @@
   df$mx <- df$mx / 2000 * df$scaling_factor
   df$my <- df$my / 2000 * df$scaling_factor
   
-  ##Scaling body parts
+  ## Scaling body parts
   df$fx_abdomen <- df$fx_abdomen / 2000 * df$scaling_factor
   df$fy_abdomen <- df$fy_abdomen / 2000 * df$scaling_factor
   df$mx_abdomen <- df$mx_abdomen / 2000 * df$scaling_factor
@@ -82,22 +99,22 @@
   df$mx_headtip <- df$mx_headtip / 2000 * df$scaling_factor
   df$my_headtip <- df$my_headtip / 2000 * df$scaling_factor
   
-  
   ## Down-sampling by specifying data at every 5 FPS##
   colnames(df)[1] <- 'time'
   df <- df[df$time %% 6 == 0, ]
   df$time <- df$time / 30
     
-    df_all <- rbind(df_all,data.frame(df))
-
-  
+  df_all <- rbind(df_all,data.frame(df))
 
   ### Save dataframes and use to obtain speed and stability
   save(df_all, file="data_fmt/df_all.rda")
   save(df_body_scaled, file="data_fmt/df_body_scaled.rda")
-  
 }
-### Data Set up
+# --------------------------------------------------------------- #
+
+# --------------------------------------------------------------- #
+# Data Set up
+# --------------------------------------------------------------- #
 {
   load("data_fmt/df_all.rda")
   
@@ -107,10 +124,10 @@
   df$f_spe[df$time == 0] <- 0
   df$m_spe[df$time == 0] <- 0
   
-  #### TANDEM + CLOSE####
+  #### TANDEM + CLOSE ####
   body_size_f <- mean(df_body_scaled$female)
   body_size_m <- mean(df_body_scaled$male)
-  tandem_threshold = (body_size_f + body_size_m) * 0.6
+  tandem_threshold = (body_size_f + body_size_m) * tandem_threshold_dis
   df$partner_dis = sqrt((df$fy - df$my)^2 + (df$fx - df$mx)^2)
   
   df$heading_f <- atan2(df$fy_headtip - df$fy_abdomen, df$fx_headtip - df$fx_abdomen)
@@ -118,7 +135,7 @@
   heading_diff <- abs((df$heading_f - df$heading_m + pi) %% (2 * pi) - pi)
   
   df$close <- (df$partner_dis < tandem_threshold)
-  df$tandem <- (df$f_spe > tandemSpeed)&(df$m_spe > tandemSpeed)&(df$partner_dis < tandem_threshold) &(heading_diff < tandemAngle)
+  df$tandem <- (df$f_spe > tandemSpeed)&(df$m_spe > tandemSpeed)&(df$close) &(heading_diff < tandemAngle)
   df$tandem[is.na(df$tandem)] <- FALSE
   
   ### what is the average duration of male led tandem runs vs what is the average duration of female led tandem runs
@@ -126,64 +143,77 @@
   close_df <- data.frame(close = logical(0))
   lead_df <- data.frame(m_lead = logical(0),f_lead = logical(0))
   df_list <- list()
+  
+  # NM: here I get error "Error: object 'videos' not found". add the following line
+  videos <- unique(df$video)
+  
   for(i_v in 1:length(videos)){ 
-    df_temp <- subset(df, video == videos[i_v])
-    ## Applying Tandem Smoothing to df
-      repeat {
-        old_rle <- rle(df_temp$tandem)
-        df_temp$tandem <- tandem.smoothing(df_temp$tandem, tandemsmooth)
-        new_rle <- rle(df_temp$tandem) 
-        if (identical(old_rle$lengths, new_rle$lengths)) break
-      }
-      tandem_df <- rbind(tandem_df, data.frame(tandem = df_temp$tandem))
-      
-      repeat {
-        old_rle <- rle(df_temp$close)
-        df_temp$close <- tandem.smoothing(df_temp$close, tandemsmooth)
-        new_rle <- rle(df_temp$close) 
-        if (identical(old_rle$lengths, new_rle$lengths)) break
-      }
-      close_df <- rbind(close_df, data.frame(close = df_temp$close))
-      
-    ##Male and female lead for each frame/smoothing leaders
-    {
-    df_temp$m_lead <- FALSE
-    df_temp$f_lead <- FALSE
-      for (f in seq_len(nrow(df_temp))) {  
-      if (df_temp$tandem[f] == TRUE) {
-        mTof <- sqrt((df_temp$mx_headtip[f] - df_temp$fx_abdomen[f])^2 + (df_temp$my_headtip[f] - df_temp$fy_abdomen[f])^2)
-        fTom <- sqrt((df_temp$fx_headtip[f] - df_temp$mx_abdomen[f])^2 + (df_temp$fy_headtip[f] - df_temp$my_abdomen[f])^2)
-        
-        if (mTof > fTom) {
-          df_temp$m_lead[f] <- TRUE
-          df_temp$f_lead[f] <- FALSE
-        } else {
-          df_temp$f_lead[f] <- TRUE
-          df_temp$m_lead[f] <- FALSE
-        }
-      } else {
-        df_temp$m_lead[f] <- FALSE
-        df_temp$f_lead[f] <- FALSE
-      }
-      }
-    #smoothing leaders
-    repeat {
-      old_rle <- rle(df_temp$m_lead)  # Store previous RLE state
-      df_temp$m_lead <- tandem.smoothing(df_temp$m_lead, leadsmooth)
-      new_rle <- rle(df_temp$m_lead)  # Check new state
-      if (identical(old_rle$lengths, new_rle$lengths)) break  # Stop when no changes occur
-    }
-    repeat {
-      old_rle <- rle(df_temp$f_lead)  # Store previous RLE state
-      df_temp$f_lead <- tandem.smoothing(df_temp$f_lead, leadsmooth)
-      new_rle <- rle(df_temp$f_lead)  # Check new state
-      if (identical(old_rle$lengths, new_rle$lengths)) break  # Stop when no changes occur
-    }
     
-    lead_df <- rbind(lead_df, data.frame(m_lead = df_temp$m_lead,f_lead = df_temp$f_lead))
+    df_temp <- subset(df, video == videos[i_v])
+    
+    ## Applying Tandem Smoothing to df
+    repeat {
+      old_rle <- rle(df_temp$tandem)
+      df_temp$tandem <- tandem.smoothing(df_temp$tandem, tandemsmooth)
+      new_rle <- rle(df_temp$tandem) 
+      if (identical(old_rle$lengths, new_rle$lengths)) break
+    }
+    tandem_df <- rbind(tandem_df, data.frame(tandem = df_temp$tandem))
+    
+    repeat {
+      old_rle <- rle(df_temp$close)
+      df_temp$close <- tandem.smoothing(df_temp$close, tandemsmooth)
+      new_rle <- rle(df_temp$close) 
+      if (identical(old_rle$lengths, new_rle$lengths)) break
+    }
+    close_df <- rbind(close_df, data.frame(close = df_temp$close))
+    
+    ## Male and female lead for each frame/smoothing leaders
+    {
+      df_temp$m_lead <- FALSE
+      df_temp$f_lead <- FALSE
+      for (f in seq_len(nrow(df_temp))) {
+        if (df_temp$tandem[f] == TRUE) {
+          mTof <- sqrt((df_temp$mx_headtip[f] - df_temp$fx_abdomen[f])^2 + 
+                         (df_temp$my_headtip[f] - df_temp$fy_abdomen[f])^2)
+          fTom <- sqrt((df_temp$fx_headtip[f] - df_temp$mx_abdomen[f])^2 +
+                         (df_temp$fy_headtip[f] - df_temp$my_abdomen[f])^2)
+          if (mTof > fTom) {
+            df_temp$m_lead[f] <- TRUE
+            df_temp$f_lead[f] <- FALSE
+          } else {
+            df_temp$f_lead[f] <- TRUE
+            df_temp$m_lead[f] <- FALSE
+          }
+        } else {
+          df_temp$m_lead[f] <- FALSE
+          df_temp$f_lead[f] <- FALSE
+        }
       }
+      
+      # smoothing leaders
+      repeat {
+        old_rle <- rle(df_temp$m_lead)  # Store previous RLE state
+        df_temp$m_lead <- tandem.smoothing(df_temp$m_lead, leadsmooth)
+        new_rle <- rle(df_temp$m_lead)  # Check new state
+        if (identical(old_rle$lengths, new_rle$lengths))
+          break  # Stop when no changes occur
+      }
+      
+      repeat {
+        old_rle <- rle(df_temp$f_lead)  # Store previous RLE state
+        df_temp$f_lead <- tandem.smoothing(df_temp$f_lead, leadsmooth)
+        new_rle <- rle(df_temp$f_lead)  # Check new state
+        if (identical(old_rle$lengths, new_rle$lengths))
+          break  # Stop when no changes occur
+      }
+      
+      lead_df <- rbind(lead_df,
+                       data.frame(m_lead = df_temp$m_lead, f_lead = df_temp$f_lead))
+    }
       
     tandem <- df_temp$tandem
+    
     # Tandem calculations
     tan.end <- which(tandem)[c(diff(which(tandem)) > 1, T)]
     tan.sta <- which(tandem)[c(T, diff(which(tandem)) > 1)]
@@ -196,8 +226,6 @@
     sep_duration <- (sep.end - sep.sta) / 5
     sep_cens <- sep.end != length(separation)
     
-
-    
     # Create data frames for tandem and separation
     df_tandem <- data.frame(
       video = videos[i_v],
@@ -206,7 +234,6 @@
       m_lead = df_temp$m_lead[tan.sta],
       f_lead = df_temp$f_lead[tan.sta]
     )
-    
     
     df_separation <- data.frame(
       video = videos[i_v],
@@ -220,18 +247,19 @@
   }
   
   df_final <- do.call(rbind, df_list)
-  df$tandem=tandem_df$tandem
-  df$close=close_df$close
-  df$close <- ifelse(df$tandem, FALSE, df$close)
-  df$m_lead=lead_df$m_lead
-  df$f_lead=lead_df$f_lead
+  df$tandem <- tandem_df$tandem
+  df$close  <- close_df$close
+  df$close  <- ifelse(df$tandem, FALSE, df$close)
+  df$m_lead <- lead_df$m_lead
+  df$f_lead <- lead_df$f_lead
   df$lead <- ifelse(df$m_lead, "male",
                     ifelse(df$f_lead, "female", NA))
   
-  ###how frequently pairs switch leading roles during tandem running.
-  df$switch=FALSE
+  ### how frequently pairs switch leading roles during tandem running.
+  df$switch = FALSE
   df_switches <- data.frame(video = character(0), switches = integer(0))
   frame=0
+  # NM: This is minor comment but we may stick with i_v in 1:length(videos) as other parts do so instead of v in videos. it is nice to have consistency in the same file.
   for(v in videos){
     video_rows <- which(df$video == v)
     m_lead = 0
@@ -239,35 +267,37 @@
     switches = 0
     previous_leader = ""
     for(j in video_rows){
-      frame=frame+1
+      frame = frame + 1
       if(df$tandem[j] == TRUE){
         current_leader = df$lead[j]
         # Increment switch count if the leader changes
         if (previous_leader != "" && current_leader != previous_leader) {
           switches = switches + 1
-          df$switch[frame]=TRUE
+          df$switch[frame] = TRUE
         }
-        
         previous_leader = current_leader
       }
     }
-      df_lead_temp <- data.frame(
+    df_lead_temp <- data.frame(
       video = v,
       switches = switches
     )
     df_switches <- rbind(df_switches, df_lead_temp)
   }
+  
   # finding the last led for seperation events
   df$lastled <- NA
+  
+  # NM: This is good, but I wonder why several different approaches were used for similar treatments here and there. Here we use lapply but we use simple for loop for other places. It is better to make it consistent.
   video_list <- split(df, df$video)
   processed_list <- lapply(video_list, function(sub_df) {
-  sub_df <- sub_df[order(sub_df$time), ]
-  last_leader <- NA
-  for(i in 1:nrow(sub_df)) {
-    if(sub_df$time[i] == 0) {
+    sub_df <- sub_df[order(sub_df$time), ]
+    last_leader <- NA
+    for (i in 1:nrow(sub_df)) {
+      if (sub_df$time[i] == 0) {
         sub_df$lastled[i] <- NA
       } else {
-        if(is.na(sub_df$lead[i])) {
+        if (is.na(sub_df$lead[i])) {
           sub_df$lastled[i] <- last_leader
         } else {
           sub_df$lastled[i] <- NA
@@ -275,11 +305,12 @@
         }
       }
     }
-    
     return(sub_df)
   })
   df <- do.call(rbind, processed_list)
   df <- df[order(df$video, df$time), ]
+  
+  # NM 041525
   
   ## Compare tandem run duration between different dish sizes.
   df_filtered150 <- df_final[df_final$tandem == TRUE & grepl("150", df_final$video), ]
