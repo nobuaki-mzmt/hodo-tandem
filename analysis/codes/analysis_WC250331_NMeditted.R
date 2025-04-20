@@ -740,7 +740,7 @@
       theme_minimal()
     
     r <- glm(switches ~ dish_size, family = "poisson", data = df_switches2)
-    Anova
+    Anova(r)
     
     # NM: this result may be nice to be shown in table
     write.csv(df_switches2, file = "output/switch.csv", row.names = F)
