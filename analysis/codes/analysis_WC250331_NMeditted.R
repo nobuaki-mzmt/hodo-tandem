@@ -463,21 +463,18 @@
   
   # Description of interaction pattern
   {
-    if(F){
-      # NM: which df is this based on? ideally load it here to make sure.
-      df$state <- ifelse(df$m_lead, "male led tandem",
-                         ifelse( df$f_lead, "female led tandem",
-                           ifelse(df$close, "close", "separated")
-                         ))
-      df_state <- as.data.frame(table(df$video, df$state))
-      colnames(df_state) <- c("video", "state", "count")
-      df_state <- df_state %>%
-        group_by(video) %>%
-        mutate(prop = count / sum(count))
-      df_state$state <- factor(df_state$state, levels = c("separated", "female led tandem",
+    # NM: which df is this based on? ideally load it here to make sure.
+    df$state <- ifelse(df$m_lead, "male led tandem",
+                       ifelse( df$f_lead, "female led tandem",
+                         ifelse(df$close, "close", "separated")
+                       ))
+    df_state <- as.data.frame(table(df$video, df$state))
+    colnames(df_state) <- c("video", "state", "count")
+    df_state <- df_state %>%
+      group_by(video) %>%
+      mutate(prop = count / sum(count))
+    df_state$state <- factor(df_state$state, levels = c("separated", "female led tandem",
                                                           "male led tandem", "close"))
-    }
-    
     ggplot(df_state, aes(x = forcats::fct_rev(video), y = prop, fill = state)) +
       geom_bar(stat = "identity") +
       scale_y_continuous(breaks = c(0, .5, 1), labels = c(0, .5, 1)) +
@@ -522,6 +519,7 @@
       
       ggsurv <- ggsurvplot(
         fit      = fit_by_lead,
+        facet.by = "size",
         xlim     = c(0, 1800),
         conf.int = TRUE,
         xlab     = "Tandem interruption duration (min)",
@@ -529,7 +527,7 @@
         censor   = TRUE,
         palette = viridis(2, direction = -1, end =.5, option = "D")
       )
-      ggsurv$plot +
+      ggsurv +
         scale_x_continuous(breaks = seq(0, 1800, 600), labels = c(0, 10, 20, 30)) +
         scale_y_continuous(breaks = seq(0, 1, 1)) +
         theme_classic() +
@@ -542,7 +540,7 @@
         ) +
         guides(fill = "none")
       
-      ggsave("output/plot_sep_sex.pdf", height = 4, width = 6)
+      ggsave("output/plot_nontandem.pdf", height = 4, width = 6)
       
     }
     
@@ -563,7 +561,7 @@
       fit_by_lead <- survfit(Surv(duration, cens) ~ lead, data = df_tandem_runs)
       
       df_tandem_runs$size <- factor(df_tandem_runs$size, levels = c("150", "90"))
-      fit_by_size <- survfit(Surv(duration, event) ~ size, data = df_tandem_runs)
+      fit_by_size <- survfit(Surv(duration, cens) ~ size, data = df_tandem_runs)
       
       if(F){
         plot(
@@ -757,8 +755,9 @@
       geom_boxplot(fill = c("darkgreen", "orange"), alpha = .25, width = .5) +
       geom_point() + 
       labs(x = "", y = "Speed (mm/s)") +
-      theme_classic()
-    ggsave("output/speed_comp.pdf", width = 4, height = 3)
+      theme_classic() +
+      scale_y_continuous(limits = c(0,30))
+    ggsave("output/speed_comp.pdf", width = 2.5, height = 3)
     
     
     t.test(leader_speed ~ size, data = df_sum)
