@@ -42,7 +42,6 @@ install.packages(c("stringr", "data.table", "arrow", "dplyr", "MASS", "ggplot2",
                    "cowplot", "coxme", "tidyr"))
 ```
 This project also uses Python. You’ll need the following Python packages:
-Install the following Python packages with the specified versions:
 
 ```ini
 pandas==1.3.5
