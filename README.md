@@ -31,8 +31,6 @@ The models and labels are available at TBA.
 
 ## Setup & Dependencies
 
-<span style="color: red;">NM: > William, add Python dependencies too.</span>
-<span style="color: red;">NM: > William, also version of each you used.</span>
 
 This project is written in R. You’ll need the following packages:
 
