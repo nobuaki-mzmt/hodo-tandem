@@ -41,7 +41,15 @@ install.packages(c("stringr", "data.table", "arrow", "dplyr", "MASS", "ggplot2",
                    "patchwork", "knitr", "survival", "survminer", "zoo",
                    "cowplot", "coxme", "tidyr"))
 ```
+This project also uses Python. You’ll need the following Python packages:
 
+ini
+Copy
+Edit
+pandas==1.3.5
+h5py==3.1.0
+numpy==1.19.5
+scipy==1.7.3
 ## Citation
 TBA
 @article{mizumoto2025, title={Observation of tandem running behavior in mating pairs of Asian dampwood termite, Hodotermopsis sjostedti}, author={Mizumoto, Nobuaki and Chambliss, William and Elijah, Carroll P and Nakazono, Tomohiro and Kanao, Taisuke}, journal={TBA}, year={2025}, doi={DOI} }
