@@ -1,9 +1,36 @@
+# Data and Code for "Observation of tandem running behavior in mating pairs of Asian dampwood termite, Hodotermopsis sjostedti"
+ 
+## Article information
 
-# 🐛 Termite Tandem Behavior Analysis
+This repository provides access to the data and source code used for the manuscript  
+**Observation of tandem running behavior in mating pairs of Asian dampwood termite, _Hodotermopsis sjostedti_**
 
-This project investigates **tandem running behavior in termites**, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leadership (male or female), and analyzing how behaviors vary by arena size.
+**Authors:**  
+**Nobuaki Mizumoto**<sup>1,2</sup>, **William Chambliss**<sup>1</sup>, **Carroll P Elijah**<sup>1</sup>, **Tomohiro Nakazono**<sup>3</sup>, **Taisuke Kanao**<sup>4</sup>  
 
-## 🔧 Setup & Dependencies
+<sup>1</sup> Department of Entomology & Plant Pathology, Auburn University, Auburn, AL, 36849, USA<br>
+<sup>2</sup> Okinawa Institute of Science and Technology, Onna-son, Okinawa, 904-0495, Japan<br>
+<sup>3</sup> Laboratory of Insect Ecology, Graduate School of Agriculture, Kyoto University, Kyoto, Japan 606-8502<br>
+<sup>4</sup> Faculty of Science, Yamagata University, Yamagata 990-8560, Japan<br>
+
+**Paper DOI:** [TBA](XXX)
+
+This study describes the tandem running behavior in the termite *Hodotermopsis sjostedti*, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leader roles (male or female), and analyzing how behaviors vary with arena size.  
+This repository includes raw tracking data and the Python and R scripts to analyze them.  
+The models and labels are available at TBA.
+
+## Repository Structure
+
+- **`/analysis/codes/`**: Contains scripts for analysis.
+  - **`analysis.R`**: R script for conducting statistical analysis and generating figures.
+  - **`sleap_processing.py`**: Python script to process and clean data from SLEAP tracking outputs.
+  
+- **`/data_raw/`**: Contains raw `.h5` data produced by SLEAP.
+- **`/data_fmt/`**: Contains formatted datasets generated during analysis.
+- **`/output/`**: Contains output files, including figures and analysis results.
+
+## Setup & Dependencies
+
 
 This project is written in R. You’ll need the following packages:
 
@@ -12,73 +39,22 @@ install.packages(c("stringr", "data.table", "arrow", "dplyr", "MASS", "ggplot2",
                    "patchwork", "knitr", "survival", "survminer", "zoo",
                    "cowplot", "coxme", "tidyr"))
 ```
+This project also uses Python. You’ll need the following Python packages:
 
-## 🧠 Research Goals
-
-- Determine how **sex (male vs. female)** affects tandem leadership.
-- Evaluate how **arena size (90mm vs. 150mm)** influences behavior.
-- Understand **duration and stability** of tandem runs and separation events.
-- Quantify **switches in leadership** during tandem.
-
-## 📊 Workflow Summary
-
-### 1. **Data Processing**
-- Scale raw tracking data (SLEAP) from pixels to millimeters using arena-specific scaling.
-- Downsample frames to 5 FPS for analysis consistency.
-- Merge position data with body size metrics.
-
-### 2. **Tandem Identification**
-- A tandem run is defined by:
-  - Speed threshold
-  - Distance between individuals
-  - Angular alignment
-- Tandem smoothing removes short spurious events.
-
-### 3. **Leader Detection**
-- Leaders are identified based on positional geometry:
-  - Whichever termite's head is closer to the partner's abdomen is the follower.
-- Smoothing is applied to leadership frames for reliability.
-
-### 4. **Feature Engineering**
-- Calculate durations of:
-  - Tandem runs (split by sex and dish size)
-  - Separation events (post-tandem)
-- Count **switches in leadership**.
-- Label who was leading prior to separation.
-
-### 5. **Statistical Modeling**
-- Mixed-effects Cox proportional hazards models (`coxme`) analyze:
-  - Whether male or female leaders have longer tandem durations.
-  - Differences in behavior between dish sizes.
-
-### 6. **Visualization**
-- Survival analysis plots:
-  - Tandem duration by sex
-  - Separation duration by previous leader
-  - Comparisons by arena size
-- Boxplots:
-  - Speed distributions by sex and dish size
-  - Leadership switching rates
-
-## 📌 Key Parameters
-
-```r
-tandemAngle <- 60 * (pi / 180)  # Angular difference threshold
-tandemsmooth <- 20              # Smoothing window for tandem detection
-leadsmooth <- 15                # Smoothing window for leadership
-tandemSpeed <- 1.213            # Minimum speed (mm/s) to count as tandem
+```ini
+pandas==1.3.5
+h5py==3.1.0
+numpy==1.19.5
+scipy==1.7.3
 ```
 
-## 🐜 Data Sources
+## Citation
+TBA
+@article{mizumoto2025, title={Observation of tandem running behavior in mating pairs of Asian dampwood termite, Hodotermopsis sjostedti}, author={Mizumoto, Nobuaki and Chambliss, William and Elijah, Carroll P and Nakazono, Tomohiro and Kanao, Taisuke}, journal={TBA}, year={2025}, doi={DOI} }
 
-- **Tracking Data**: `data_raw_df.feather` from SLEAP.
-- **Termite Body Sizes**: `data_raw_bodysize.csv`
-- **Processed Data**: Includes `.rda` outputs with leadership and behavior metadata.
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ✅ Status
-
-- [x] Preprocessing complete
-- [x] Tandem behavior annotated
-- [x] Statistical modeling done
-- [x] Survival visualizations created
-- [ ] Final publication-ready plots and write-up in progress
+## Contact
+William Chambliss: wlc0018@auburn.edu  
+Nobuaki Mizumoto: nzm0095@auburn.edu
