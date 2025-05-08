@@ -31,8 +31,6 @@ The models and labels are available at TBA.
 
 ## Setup & Dependencies
 
-<span style="color: red;">NM: > William, add Python dependencies too.</span>
-<span style="color: red;">NM: > William, also version of each you used.</span>
 
 This project is written in R. You’ll need the following packages:
 
@@ -40,6 +38,14 @@ This project is written in R. You’ll need the following packages:
 install.packages(c("stringr", "data.table", "arrow", "dplyr", "MASS", "ggplot2",
                    "patchwork", "knitr", "survival", "survminer", "zoo",
                    "cowplot", "coxme", "tidyr"))
+```
+This project also uses Python. You’ll need the following Python packages:
+
+```ini
+pandas==1.3.5
+h5py==3.1.0
+numpy==1.19.5
+scipy==1.7.3
 ```
 
 ## Citation
