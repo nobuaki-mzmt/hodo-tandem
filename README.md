@@ -13,7 +13,7 @@ This repository provides access to the data and source code used for the manuscr
 <sup>3</sup> Laboratory of Insect Ecology, Graduate School of Agriculture, Kyoto University, Kyoto, Japan 606-8502<br>
 <sup>4</sup> Faculty of Science, Yamagata University, Yamagata 990-8560, Japan<br>
 
-**Paper DOI:** [TBA](XXX)
+**Paper DOI:** [Preprint](https://doi.org/10.1101/2025.05.02.651862)
 
 This study describes the tandem running behavior in the termite *Hodotermopsis sjostedti*, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leader roles (male or female), and analyzing how behaviors vary with arena size.  
 This repository includes raw tracking data and the Python and R scripts to analyze them.  
