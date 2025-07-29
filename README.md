@@ -51,8 +51,7 @@ scipy==1.7.3
 ```
 
 ## Citation
-TBA
-@article{mizumoto2025, title={Observation of tandem running behavior in mating pairs of Asian dampwood termite, Hodotermopsis sjostedti}, author={Mizumoto, Nobuaki and Chambliss, William and Elijah, Carroll P and Nakazono, Tomohiro and Kanao, Taisuke}, journal={TBA}, year={2025}, doi={DOI} }
+@article{mizumoto2025, title={Observation of tandem running behavior in dealates of Asian dampwood termite, Hodotermopsis sjostedti}, author={Mizumoto, Nobuaki and Chambliss, William and Carroll, Elijah P and Nakazono, Tomohiro and Kanao, Taisuke}, journal={Journal of Ethology}, year={2025}, doi={10.1007/s10164-025-00857-5} }
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
