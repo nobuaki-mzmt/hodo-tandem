@@ -1,9 +1,9 @@
-# Data and Code for "Observation of tandem running behavior in mating pairs of Asian dampwood termite, Hodotermopsis sjostedti"
+# Data and Code for "Observation of tandem running behavior in dealates of Asian dampwood termite, _Hodotermopsis sjostedti_"
  
 ## Article information
 
 This repository provides access to the data and source code used for the manuscript  
-**Observation of tandem running behavior in mating pairs of Asian dampwood termite, _Hodotermopsis sjostedti_**
+**Observation of tandem running behavior in dealates of Asian dampwood termite, _Hodotermopsis sjostedti_**
 
 **Authors:**  
 **Nobuaki Mizumoto**<sup>1,2</sup>, **William Chambliss**<sup>1</sup>, **Carroll P Elijah**<sup>1</sup>, **Tomohiro Nakazono**<sup>3</sup>, **Taisuke Kanao**<sup>4</sup>  
@@ -13,7 +13,9 @@ This repository provides access to the data and source code used for the manuscr
 <sup>3</sup> Laboratory of Insect Ecology, Graduate School of Agriculture, Kyoto University, Kyoto, Japan 606-8502<br>
 <sup>4</sup> Faculty of Science, Yamagata University, Yamagata 990-8560, Japan<br>
 
-**Paper DOI:** [Preprint](https://doi.org/10.1101/2025.05.02.651862)
+**Paper DOI:**   
+Paper accepted at Journal of Ethology [10.1007/s10164-025-00857-5](https://doi.org/10.1007/s10164-025-00857-5)  
+Preprint at bioRxiv [10.1101/2025.05.02.651862](https://doi.org/10.1101/2025.05.02.651862)  
 
 This study describes the tandem running behavior in the termite *Hodotermopsis sjostedti*, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leader roles (male or female), and analyzing how behaviors vary with arena size.  
 This repository includes raw tracking data and the Python and R scripts to analyze them.  
