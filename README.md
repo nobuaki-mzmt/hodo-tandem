@@ -19,7 +19,6 @@ Preprint at bioRxiv [10.1101/2025.05.02.651862](https://doi.org/10.1101/2025.05.
 
 This study describes the tandem running behavior in the termite *Hodotermopsis sjostedti*, using high-resolution position data extracted from video tracking. The analysis focuses on identifying tandem runs, measuring their durations, detecting leader roles (male or female), and analyzing how behaviors vary with arena size.  
 This repository includes raw tracking data and the Python and R scripts to analyze them.  
-The models and labels are available at TBA.
 
 ## Repository Structure
 
