@@ -6,7 +6,7 @@ This repository provides access to the data and source code used for the manuscr
 **Observation of tandem running behavior in dealates of Asian dampwood termite, _Hodotermopsis sjostedti_**
 
 **Authors:**  
-**Nobuaki Mizumoto**<sup>1,2</sup>, **William Chambliss**<sup>1</sup>, **Carroll P Elijah**<sup>1</sup>, **Tomohiro Nakazono**<sup>3</sup>, **Taisuke Kanao**<sup>4</sup>  
+**Nobuaki Mizumoto**<sup>1,2</sup>, **William Chambliss**<sup>1</sup>, **Elijah P Carroll**<sup>1</sup>, **Tomohiro Nakazono**<sup>3</sup>, **Taisuke Kanao**<sup>4</sup>  
 
 <sup>1</sup> Department of Entomology & Plant Pathology, Auburn University, Auburn, AL, 36849, USA<br>
 <sup>2</sup> Okinawa Institute of Science and Technology, Onna-son, Okinawa, 904-0495, Japan<br>
